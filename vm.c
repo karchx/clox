@@ -6,8 +6,8 @@
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
-#include "object.h"
 #include "memory.h"
+#include "object.h"
 #include "vm.h"
 
 VM vm;
@@ -27,9 +27,14 @@ static void runtimeError(const char *format, ...) {
   resetStack();
 }
 
-void initVM() { resetStack(); }
+void initVM() {
+  resetStack();
+  vm.objects = NULL;
+}
 
-void freeVM() {}
+void freeVM() {
+  freeObjects();
+}
 
 void push(Value value) {
   *vm.stackTop = value;
@@ -64,7 +69,7 @@ static void concatenate() {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define BINARY_OP(valueType, op) \
+#define BINARY_OP(valueType, op)                                               \
   do {                                                                         \
     if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) {                          \
       runtimeError("Operands must be numbers.");                               \
@@ -72,7 +77,7 @@ static InterpretResult run() {
     }                                                                          \
     double b = AS_NUMBER(pop());                                               \
     double a = AS_NUMBER(pop());                                               \
-    push(valueType(a op b)); \
+    push(valueType(a op b));                                                   \
   } while (false)
 
   for (;;) {
