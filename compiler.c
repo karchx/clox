@@ -45,10 +45,7 @@ typedef struct {
   int depth;
 } Local;
 
-typedef enum {
-  TYPE_FUNCTION,
-  TYPE_SCRIPT
-} FunctionType;
+typedef enum { TYPE_FUNCTION, TYPE_SCRIPT } FunctionType;
 
 typedef struct {
   ObjFunction *function;
@@ -63,7 +60,7 @@ Parser parser;
 Compiler *current = NULL;
 Chunk *compilingChunk;
 
-static Chunk *currentChunk() { return compilingChunk; }
+static Chunk *currentChunk() { return &current->function->chunk; }
 
 static void errorAt(Token *token, const char *message) {
   if (parser.panicMode)
@@ -132,7 +129,8 @@ static void emitLoop(int loopStart) {
   emitByte(OP_LOOP);
 
   int offset = currentChunk()->count - loopStart + 2;
-  if (offset > UINT16_MAX) error("Loop body too large.");
+  if (offset > UINT16_MAX)
+    error("Loop body too large.");
 
   emitByte((offset >> 8) & 0xff);
   emitByte(offset & 0xff);
@@ -514,7 +512,7 @@ static void expressionStatement() {
 static void forStatement() {
   beginScope();
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
-  if(match(TOKEN_SEMICOLON)) {
+  if (match(TOKEN_SEMICOLON)) {
 
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
@@ -524,7 +522,7 @@ static void forStatement() {
 
   int loopStart = currentChunk()->count;
   int exitJump = -1;
-  if(!match(TOKEN_SEMICOLON)) {
+  if (!match(TOKEN_SEMICOLON)) {
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
 
@@ -532,7 +530,7 @@ static void forStatement() {
     emitByte(OP_POP);
   }
 
-  if(!match(TOKEN_RIGHT_PAREN)) {
+  if (!match(TOKEN_RIGHT_PAREN)) {
     int bodyJump = emitJump(OP_JUMP);
     int incrementStart = currentChunk()->count;
     expression();
@@ -547,7 +545,7 @@ static void forStatement() {
   statement();
   emitLoop(loopStart);
 
-  if(exitJump != -1) {
+  if (exitJump != -1) {
     patchJump(exitJump);
     emitByte(OP_POP);
   }
@@ -633,8 +631,7 @@ static void statement() {
     printStatement();
   } else if (match(TOKEN_FOR)) {
     forStatement();
-  }
-  else if (match(TOKEN_IF)) {
+  } else if (match(TOKEN_IF)) {
     ifStatement();
   } else if (match(TOKEN_WHILE)) {
     whileStatement();
