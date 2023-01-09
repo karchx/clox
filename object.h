@@ -1,6 +1,7 @@
 #ifndef clox_object_h
 #define clox_object_h
 
+#include "chunk.h"
 #include "common.h"
 #include "value.h"
 
@@ -16,6 +17,13 @@ struct Obj {
   ObjType type;
   struct Obj *next;
 };
+
+typedef struct {
+  Obj obj;
+  int arity;
+  Chunk chunk;
+  ObjString* name;
+} ObjFunction;
 
 struct ObjString {
   Obj obj;
