@@ -190,7 +190,8 @@ static ObjFunction *endCompiler() {
   ObjFunction *function = current->function;
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-    disassembleChunk(currentChunk(), "code");
+    disassembleChunk(currentChunk(), function->name != NULL
+        ? function->name->chars : "<script>");
   }
 #endif
   return function;
@@ -655,7 +656,7 @@ static void statement() {
   }
 }
 
-bool compile(const char *source, Chunk *chunk) {
+ObjFunction *compile(const char *source, Chunk *chunk) {
   initScanner(source);
   Compiler compiler;
   initCompler(&compiler, TYPE_SCRIPT);
@@ -669,6 +670,6 @@ bool compile(const char *source, Chunk *chunk) {
     declaration();
   }
 
-  endCompiler();
-  return !parser.hadError;
+  ObjFunction *function = endCompiler();
+  return parser.hadError ? NULL : function;
 }
