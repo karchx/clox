@@ -12,8 +12,8 @@
 
 VM vm;
 
-static void resetStack() { 
-  vm.stackTop = vm.stack; 
+static void resetStack() {
+  vm.stackTop = vm.stack;
   vm.frameCount = 0;
 }
 
@@ -23,6 +23,18 @@ static void runtimeError(const char *format, ...) {
   vfprintf(stderr, format, args);
   va_end(args);
   fputs("\n", stderr);
+
+  for (int i = vm.frameCount - 1; i >= 0; i--) {
+    CallFrame *frame = &vm.frames[i];
+    ObjFunction *function = frame->function;
+    size_t instruction = frame->ip - function->chunk.code - 1;
+    fprintf(stderr, "[line %d] in ", function->chunk.lines[instruction]);
+    if (function->name == NULL) {
+      fprintf(stderr, "script\n");
+    } else {
+      fprintf(stderr, "%s()\n", function->name->chars);
+    }
+  }
 
   CallFrame *frame = &vm.frames[vm.frameCount - 1];
   size_t instruction = frame->ip - frame->function->chunk.code - 1;
@@ -58,12 +70,13 @@ Value pop() {
 static Value peek(int distance) { return vm.stackTop[-1 - distance]; }
 
 static bool call(ObjFunction *function, int argCount) {
-  if(argCount != function->arity) {
-    runtimeError("Expected %d arguments but got %d.", function->arity, argCount);
+  if (argCount != function->arity) {
+    runtimeError("Expected %d arguments but got %d.", function->arity,
+                 argCount);
     return false;
   }
 
-  if(vm.frameCount == FRAMES_MAX) {
+  if (vm.frameCount == FRAMES_MAX) {
     runtimeError("Stack overflow.");
     return false;
   }
@@ -76,12 +89,12 @@ static bool call(ObjFunction *function, int argCount) {
 }
 
 static bool callValue(Value callee, int argCount) {
-  if(IS_OBJ(callee)) {
+  if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
-      case OBJ_FUNCTION:
-        return call(AS_FUNCTION(callee), argCount);
-      default:
-        break;
+    case OBJ_FUNCTION:
+      return call(AS_FUNCTION(callee), argCount);
+    default:
+      break;
     }
   }
   runtimeError("Can only call functions and classes.");
@@ -110,12 +123,10 @@ static InterpretResult run() {
   CallFrame *frame = &vm.frames[vm.frameCount - 1];
 
 #define READ_BYTE() (*frame->ip++)
-#define READ_SHORT() \
-  (frame->ip += 2, \
-  (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_SHORT()                                                           \
+  (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
-#define READ_CONSTANT() \
-  (frame->function->chunk.constants.values[READ_BYTE()])
+#define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
 
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                                               \
@@ -138,8 +149,8 @@ static InterpretResult run() {
       printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&frame->function->chunk, 
-        (int)(frame->ip - frame->function->chunk.code));
+    disassembleInstruction(&frame->function->chunk,
+                           (int)(frame->ip - frame->function->chunk.code));
 #endif
 
     uint8_t instruction;
@@ -263,16 +274,25 @@ static InterpretResult run() {
       break;
     }
     case OP_CALL: {
-      int argCount = READ_BTYE();
-      if(!callValue(peek(argCount), argCount)) {
+      int argCount = READ_BYTE();
+      if (!callValue(peek(argCount), argCount)) {
         return INTERPRET_RUNTIME_ERROR;
       }
       frame = &vm.frames[vm.frameCount - 1];
       break;
-    } 
+    }
     case OP_RETURN: {
-      // Exit interpreter
-      return INTERPRET_OK;
+      Value result = pop();
+      vm.frameCount--;
+      if (vm.frameCount == 0) {
+        pop();
+        return INTERPRET_OK;
+      }
+
+      vm.stackTop = frame->slots;
+      push(result);
+      frame = &vm.frames[vm.frameCount - 1];
+      break;
     }
     }
   }
@@ -286,7 +306,8 @@ static InterpretResult run() {
 
 InterpretResult interpret(const char *source) {
   ObjFunction *function = compile(source);
-  if (function == NULL) return INTERPRET_COMPILE_ERROR;
+  if (function == NULL)
+    return INTERPRET_COMPILE_ERROR;
 
   push(OBJ_VAL(function));
   call(function, 0);

@@ -145,7 +145,10 @@ static int emitJump(uint8_t instruction) {
   return currentChunk()->count - 2;
 }
 
-static void emitReturn() { emitByte(OP_RETURN); }
+static void emitReturn() {
+  emitByte(OP_NIL);
+  emitByte(OP_RETURN);
+}
 
 static uint8_t makeConstant(Value value) {
   int constant = addConstant(currentChunk(), value);
@@ -180,8 +183,9 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
   compiler->scopeDepth = 0;
   compiler->function = newFunction();
   current = compiler;
-  if(type != TYPE_SCRIPT) {
-    current->function->name = copyString(parser.previous.start, parser.previous.length);
+  if (type != TYPE_SCRIPT) {
+    current->function->name =
+        copyString(parser.previous.start, parser.previous.length);
   }
 
   Local *local = &current->locals[current->localCount++];
@@ -510,7 +514,7 @@ static uint8_t argumentList() {
   if (!check(TOKEN_RIGHT_PAREN)) {
     do {
       expression();
-      if(argCount == 255) {
+      if (argCount == 255) {
         error("Can't have more than 255 arguments.");
       }
       argCount++;
@@ -537,15 +541,15 @@ static void function(FunctionType type) {
   beginScope();
 
   consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
-  if(!check(TOKEN_RIGHT_PAREN)) {
+  if (!check(TOKEN_RIGHT_PAREN)) {
     do {
       current->function->arity++;
-      if(current->function->arity > 255) {
+      if (current->function->arity > 255) {
         errorAtCurrent("Can't have more than 255 parameters");
       }
       uint8_t constant = parseVariable("Expect parameter name.");
       defineVariable(constant);
-    } while(match(TOKEN_COMMA));
+    } while (match(TOKEN_COMMA));
   }
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
   consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
@@ -651,6 +655,20 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 
+static void returnStatement() {
+  if(current->type == TYPE_SCRIPT) {
+    error("Can't return from top-level code.");
+  }
+
+  if (match(TOKEN_SEMICOLON)) {
+    emitReturn();
+  } else {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+    emitByte(OP_RETURN);
+  }
+}
+
 static void whileStatement() {
   int loopStart = currentChunk()->count;
   consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
@@ -708,6 +726,8 @@ static void statement() {
     forStatement();
   } else if (match(TOKEN_IF)) {
     ifStatement();
+  } else if (match(TOKEN_RETURN)) {
+    returnStatement();
   } else if (match(TOKEN_WHILE)) {
     whileStatement();
   } else if (match(TOKEN_LEFT_BRACE)) {
