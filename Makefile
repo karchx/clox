@@ -3,7 +3,7 @@
 __all: compile
 
 compile:
-	gcc *.c -o clox
+	gcc *.c -o clox -w
 
 clean:
 	rm -rf clox
