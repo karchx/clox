@@ -53,3 +53,21 @@ int addConstant(Chunk *chunk, Value value) {
   writeValueArray(&chunk->constants, value);
   return chunk->constants.count - 1;
 }
+
+int getLine(Chunk *chunk, int instruction) {
+  int start = 0;
+  int end = chunk->lineCount - 1;
+
+  for (;;) {
+    int mid = (start + end) / 2;
+    LineStart *line = &chunk->lines[mid];
+    if (instruction < line->offset) {
+      end = mid - 1;
+    } else if (mid == chunk->lineCount - 1 ||
+               instruction < chunk->lines[mid + 1].offset) {
+      return line->line;
+    } else {
+      start = mid + 1;
+    }
+  }
+}
