@@ -4,6 +4,11 @@
 #include "common.h"
 #include "value.h"
 
+typedef struct {
+  int offset;
+  int line;
+} LineStart;
+
 typedef enum {
   OP_CONSTANT,
   OP_RETURN,
@@ -13,8 +18,10 @@ typedef struct {
   int count;
   int capacity;
   uint8_t *code;
-  int *lines;
   ValueArray constants;
+  int lineCount;
+  int lineCapacity;
+  LineStart *lines;
 } Chunk;
 
 void initChunk(Chunk *chunk);
