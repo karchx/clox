@@ -48,7 +48,9 @@ Value pop() {
   return vm.stack[vm.stackCount];
 }
 
-static Value peek(int distance) { return vm.stack[-1 - distance]; }
+static Value peek(int distance) {
+  return vm.stack[vm.stackCount - 1 - distance];
+}
 
 static bool isFalsey(Value value) {
   return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
