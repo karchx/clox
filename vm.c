@@ -3,6 +3,7 @@
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
+#include "table.h"
 #include "value.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -30,9 +31,13 @@ void initVM() {
   vm.stackCapacity = 0;
   resetStack();
   vm.objects = NULL;
+  initTable(&vm.strings);
 }
 
-void freeVM() { freeObjects(); }
+void freeVM() {
+  freeTable(&vm.strings);
+  freeObjects();
+}
 
 void push(Value value) {
   if (vm.stackCapacity < vm.stackCount + 1) {
